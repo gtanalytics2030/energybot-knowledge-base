@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import anthropic
 import re
+import os
 from collections import Counter
 
 # ── Config ──────────────────────────────────────────────────────────────────
@@ -703,13 +704,9 @@ with st.sidebar:
     st.caption("GERC Regulations & Tariff Assistant")
     st.divider()
 
-    import os
-        api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")
-        type="password",
-        placeholder="sk-ant-...",
-        help="Get yours at console.anthropic.com",
-    )
-
+    api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+    st.warning("⚠️ API key not configured. Contact the administrator.")
     st.divider()
     st.markdown("**Knowledge Base covers:**")
     st.markdown("""

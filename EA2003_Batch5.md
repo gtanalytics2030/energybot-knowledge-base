@@ -213,10 +213,10 @@ Section 152. (Compounding of offences) —
 
 TABLE — Compounding rates per Kilowatt (KW)/HP for LT supply and per KVA of contracted demand for HT:
 
-1. Industrial Service — Twenty thousand rupees per KW/HP or KVA;
-2. Commercial Service — Ten thousand rupees per KW/HP or KVA;
-3. Agricultural Service — Two thousand rupees per KW/HP or KVA;
-4. Other Services — Four thousand rupees per KW/HP or KVA.
+1. Industrial Service — 20000 rupees per KW/HP or KVA;
+2. Commercial Service — 10000 rupees per KW/HP or KVA;
+3. Agricultural Service — 2000 rupees per KW/HP or KVA;
+4. Other Services — 4000 rupees per KW/HP or KVA.
 
 Provided that the Appropriate Government may, by notification in the Official Gazette, amend the rates specified in the Table above.
 

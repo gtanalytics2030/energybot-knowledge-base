@@ -706,7 +706,7 @@ with st.sidebar:
 
     api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
-    st.warning("⚠️ API key not configured. Contact the administrator.")
+        st.warning("⚠️ API key not configured. Contact the administrator.")
     st.divider()
     st.markdown("**Knowledge Base covers:**")
     st.markdown("""

@@ -703,8 +703,8 @@ with st.sidebar:
     st.caption("GERC Regulations & Tariff Assistant")
     st.divider()
 
-    api_key = st.text_input(
-        "🔑 Claude API Key",
+    import os
+        api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")
         type="password",
         placeholder="sk-ant-...",
         help="Get yours at console.anthropic.com",

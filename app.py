@@ -21,7 +21,9 @@ def load_knowledge_base():
         f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
         f"/git/trees/{BRANCH}?recursive=1"
     )
-    resp = requests.get(tree_url, timeout=20)
+    github_token = st.secrets.get("GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
+    headers = {"Authorization": f"token {github_token}"} if github_token else {}
+    resp = requests.get(tree_url, headers=headers, timeout=20)
     resp.raise_for_status()
     tree = resp.json().get("tree", [])
 
@@ -37,7 +39,9 @@ def load_knowledge_base():
             f"https://raw.githubusercontent.com/{REPO_OWNER}/{REPO_NAME}"
             f"/{BRANCH}/{path}"
         )
-        r = requests.get(raw_url, timeout=20)
+        github_token = st.secrets.get("GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
+        headers = {"Authorization": f"token {github_token}"} if github_token else {}
+        r = requests.get(raw_url, headers=headers, timeout=20)
         if r.status_code == 200:
             for chunk in _split(r.text, path):
                 chunks.append(chunk)

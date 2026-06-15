@@ -3,6 +3,7 @@ import requests
 import anthropic
 import re
 import os
+import math
 from collections import Counter
 
 # ── Config ──────────────────────────────────────────────────────────────────
@@ -10,7 +11,7 @@ REPO_OWNER = "gtanalytics2030"
 REPO_NAME  = "energybot-knowledge-base"
 BRANCH     = "main"
 MODEL      = "claude-haiku-4-5-20251001"   # fast & cheap; change to claude-sonnet-4-6 for deeper answers
-TOP_K      = 8                              # how many chunks to retrieve per query
+TOP_K      = 10                              # how many chunks to retrieve per query
 
 # ── Knowledge base loader ────────────────────────────────────────────────────
 @st.cache_data(show_spinner="Loading knowledge base from GitHub…", ttl=3600)
@@ -72,16 +73,60 @@ def _split(text: str, source: str, max_chars: int = 2500):
 
 
 # ── Retrieval ────────────────────────────────────────────────────────────────
-def _score(chunk_text: str, query: str) -> float:
-    """Simple TF-style keyword overlap score."""
-    qwords = {w for w in re.findall(r"[a-zA-Z0-9₹]+", query.lower()) if len(w) > 2}
-    cwords = Counter(re.findall(r"[a-zA-Z0-9₹]+", chunk_text.lower()))
-    return sum(cwords.get(w, 0) for w in qwords)
+_DF_CACHE = {}
 
+def _tokenize(text: str):
+    return re.findall(r"[a-z0-9]+", text.lower())
+
+def _build_df(chunks: list):
+    """Document frequency per token, computed once per knowledge base."""
+    key = len(chunks)                    # KB is fixed per session; length is a safe cache key
+    if key in _DF_CACHE:
+        return _DF_CACHE[key]
+    df = Counter()
+    for c in chunks:
+        for w in set(_tokenize(c["text"])):
+            df[w] += 1
+    _DF_CACHE[key] = (df, len(chunks))
+    return _DF_CACHE[key]
+
+# Section / clause / regulation numbers the user explicitly names, e.g. "Section 135", "Clause 7.41"
+_REF_RE = re.compile(
+    r"\b(?:section|sec|clause|regulation|reg|article|rule)\s*\.?\s*([0-9]+(?:\.[0-9]+)*)",
+    re.IGNORECASE,
+)
+
+def _query_refs(query: str):
+    return {m.group(1) for m in _REF_RE.finditer(query)}
+
+def _score(chunk_text: str, qterms: set, df: Counter, n_docs: int, refs: set) -> float:
+    cwords = Counter(_tokenize(chunk_text))
+    score = 0.0
+    # IDF-weighted, log-dampened term overlap
+    for w in qterms:
+        tf = cwords.get(w, 0)
+        if tf:
+            idf = math.log((n_docs + 1) / (df.get(w, 0) + 1)) + 1.0
+            score += (1 + math.log(tf)) * idf
+    # Strong boost when the chunk actually DEFINES a section/clause the user named.
+    low = chunk_text.lower()
+    for ref in refs:
+        if re.search(
+            rf"(?:section|sec|clause|provision|regulation|reg|article|rule)\s*\.?\s*{re.escape(ref)}\b",
+            low,
+        ):
+            score += 50.0          # this chunk is about the exact provision asked for
+        elif re.search(rf"\b{re.escape(ref)}\b", low):
+            score += 5.0           # provision merely mentioned (e.g. in cross-references)
+    return score
 
 def retrieve(query: str, chunks: list, top_k: int = TOP_K) -> list:
-    scored = sorted(chunks, key=lambda c: _score(c["text"], query), reverse=True)
-    return [c for c in scored[:top_k] if _score(c["text"], query) > 0]
+    df, n_docs = _build_df(chunks)
+    qterms = {w for w in _tokenize(query) if len(w) > 2}
+    refs = _query_refs(query)
+    scored = [(c, _score(c["text"], qterms, df, n_docs, refs)) for c in chunks]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return [c for c, s in scored[:top_k] if s > 0]
 
 
 # ── Build system prompt ───────────────────────────────────────────────────────
@@ -222,6 +267,13 @@ Examples make regulations concrete and you should use them. The discipline:
   options clearly labelled.
 - If the KB is silent, say so and point to where the user can get it (their bill, the licensee, the
   GERC site) — but only after giving whatever related grounded information you do have.
+- When the user names a specific section/clause (e.g. "Section 135", "Clause 7.41") and your
+excerpts only list it under REFERENCED PROVISIONS or mention it in passing — without its
+operative text — do not state that it is absent from the knowledge base. It likely exists but
+wasn't surfaced by this retrieval. Say: "The full text of [provision] wasn't surfaced for this
+query — try asking again focusing on it (e.g. 'theft of electricity penalty, second conviction,
+load above 10 kW') and I'll pull it." Do not reconstruct the provision's contents from
+memory, and do not send the user to external websites for content that is in these documents.
 
 ---
 
@@ -376,7 +428,7 @@ if prompt := st.chat_input("e.g. What is the domestic tariff slab for UGVCL cons
 
             with client.messages.stream(
                 model=MODEL,
-                max_tokens=1500,
+                max_tokens=3000,
                 system=system_prompt,
                 messages=[
                     {"role": m["role"], "content": m["content"]}

@@ -350,7 +350,7 @@ def build_system(relevant_chunks: list) -> str:
 
 
 # ── Streamlit UI ──────────────────────────────────────────────────────────────
-st.set_page_config(page_title="EnergyBot ⚡", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Vidya ⚡", page_icon="⚡", layout="wide")
 
 # Custom CSS for a clean look
 st.markdown("""
@@ -364,8 +364,8 @@ st.markdown("""
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/lightning-bolt.png", width=60)
-    st.title("EnergyBot ⚡")
-    st.caption("GERC Regulations & Tariff Assistant")
+    st.title("Vidya ⚡")
+    st.caption("Energy Sector Assistant")
     st.divider()
 
     api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")
@@ -397,7 +397,7 @@ except Exception as e:
     st.stop()
 
 # ── Chat ──────────────────────────────────────────────────────────────────────
-st.title("⚡ EnergyBot — GERC Regulations & Tariff Assistant")
+st.title("⚡ Vidya — Energy Sector Assistant")
 st.caption("Ask anything about Gujarat electricity tariffs, supply code, or regulations.")
 
 if "messages" not in st.session_state:

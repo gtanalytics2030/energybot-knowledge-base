@@ -162,6 +162,28 @@ def expand_query(raw_query: str, client) -> str:
     except Exception:
         return raw_query
 
+def detect_language(text: str, client) -> str:
+    """Detect the language of the user's input. Returns language code like 'gu', 'hi', 'en', etc.
+    Falls back to 'en' if detection fails."""
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=10,
+            system=(
+                "You detect the primary language of a text. Output ONLY the language code "
+                "(e.g., 'gu' for Gujarati, 'hi' for Hindi, 'mr' for Marathi, 'bn' for Bengali, "
+                "'ta' for Tamil, 'te' for Telugu, 'kn' for Kannada, 'pa' for Punjabi, 'en' for "
+                "English). If mixed, output the dominant language. Output only the code, nothing else."
+            ),
+            messages=[{"role": "user", "content": text}],
+        )
+        lang = "".join(b.text for b in msg.content if b.type == "text").strip().lower()
+        # Validate it's one of our supported codes
+        if lang in {"gu", "hi", "mr", "bn", "ta", "te", "kn", "pa", "en"}:
+            return lang
+        return "en"  # fallback
+    except Exception:
+        return "en"  # fallback on error
 
 # ── Build system prompt ───────────────────────────────────────────────────────
 SYSTEM_BASE = """## 1. IDENTITY & ROLE
@@ -457,14 +479,157 @@ lookups, no closing is needed — just answer.
 7. Is the length proportional to the question?
 """
 
-def build_system(relevant_chunks: list) -> str:
+def build_system(relevant_chunks: list, detected_language: str = "en") -> str:
+    """Build the system prompt, including language-specific instructions based on detected_language."""
+    
+    # Base grounding + citation rules (all languages share this)
+    base = SYSTEM_BASE
+    
+    # Add language-specific sub-instruction
+    if detected_language != "en":
+        base += f"\n\n## LANGUAGE OVERRIDE — Respond in {_LANGUAGE_NAMES[detected_language]}\n"
+        base += _LANGUAGE_INSTRUCTIONS[detected_language]
+    
     if not relevant_chunks:
-        return SYSTEM_BASE + "\n\n[No relevant excerpts found for this query.]"
+        return base + "\n\n[No relevant excerpts found for this query.]"
     context = "\n\n─────────────────────────\n\n".join(
         f"📄 Source: {c['source']}\n\n{c['text']}" for c in relevant_chunks
     )
-    return SYSTEM_BASE + f"\n\nKNOWLEDGE BASE EXCERPTS:\n\n{context}"
+    return base + f"\n\nKNOWLEDGE BASE EXCERPTS:\n\n{context}"
 
+
+# Language name mapping (for display in the prompt)
+_LANGUAGE_NAMES = {
+    "gu": "Gujarati (ગુજરાતી)",
+    "hi": "Hindi (हिंदी)",
+    "mr": "Marathi (मराठी)",
+    "bn": "Bengali (বাংলা)",
+    "ta": "Tamil (தமிழ்)",
+    "te": "Telugu (తెలుగు)",
+    "kn": "Kannada (ಕನ್ನಡ)",
+    "pa": "Punjabi (ਪੰਜਾਬੀ)",
+    "en": "English",
+}
+
+# Language-specific anti-hallucination instructions
+_LANGUAGE_INSTRUCTIONS = {
+    "gu": """
+### GUJARATI RESPONSE RULES (ગુજરાતી માટે નિયમો)
+
+**CRITICAL: Avoid inventing Gujarati words. Follow these rules strictly.**
+
+1. **Translate only the explanation, not the regulatory content.**
+   - Regulation numbers, section numbers, licensee names, clause titles → KEEP IN ENGLISH
+   - Example: "Section 135" નો જવાબ આપતી વખતે "Section 135" જ લખો, તેને ગુજરાતી કર્યો નહી.
+
+2. **For technical terms with no standard Gujarati equivalent, keep them in English.**
+   - "فОLT", "transformer", "disconnection", "UUE", "compensation", "tariff" → use English
+   - Don't invent Gujarati words like "ફોલ્ટ-અનુવાદ" or "વિદ્યુત-પોથો". These are hallucinations.
+   - If you're unsure of a Gujarati word, DON'T use it. Keep it English.
+
+3. **Translate only conversational/explanatory Gujarati:**
+   - "તમારો બીજ કયો છે?" (your bill category) → translate to Gujarati ✓
+   - "દરેક દિવસે 2 વધુમાં વધુ વાર બંધ હોય શકે છે" (max 2 interruptions per day) → translate ✓
+   - "Regulation 4.14" → DON'T translate ✓
+
+4. **Use only standard, widely-understood Gujarati words.**
+   - If a word is dialectal, archaic, or non-standard, avoid it. Use simpler words.
+   - Example: use "બીજ" (bill) not "બીજક"; use "લાઇટ" (electricity/light) not invented variants.
+
+5. **Structure stays intact:**
+   - Tables, lists, numbers, regulation citations → unchanged
+   - Surrounding prose → Gujarati
+""",
+    
+    "hi": """
+### HINDI RESPONSE RULES (हिंदी के लिए नियम)
+
+**CRITICAL: Avoid inventing Hindi words. Follow these rules strictly.**
+
+1. **Translate only the explanation, not the regulatory content.**
+   - Regulation numbers, section numbers, licensee names, clause titles → KEEP IN ENGLISH
+   - Example: "Section 135" को हिंदी में अनुवाद न करें।
+
+2. **For technical terms with no standard Hindi equivalent, keep them in English.**
+   - "fault", "transformer", "disconnection", "UUE", "compensation", "tariff" → use English
+   - Don't invent Hindi words. If unsure, keep it English.
+
+3. **Translate only conversational/explanatory content:**
+   - "आपकी बिल श्रेणी क्या है?" (your bill category) → translate to Hindi ✓
+   - "प्रतिदिन अधिकतम 2 बार बंद हो सकता है" (max 2 interruptions per day) → translate ✓
+   - "Regulation 4.14" → DON'T translate ✓
+
+4. **Use Devanagari script and standard Hindi vocabulary.**
+   - Avoid Hinglish or romanized text in your response.
+   - Use widely understood words; avoid archaic or dialectal terms.
+
+5. **Structure stays intact:**
+   - Tables, numbers, regulation citations → unchanged
+   - Surrounding prose → Hindi (Devanagari)
+""",
+    
+    "mr": """
+### MARATHI RESPONSE RULES (मराठीसाठी नियम)
+
+**CRITICAL: Avoid inventing Marathi words.**
+
+1. **Keep regulatory content in English:**
+   - Regulation numbers, section numbers, licensee names → ENGLISH
+
+2. **Translate only explanations and procedures to Marathi.**
+   - Use standard Marathi; avoid archaic or dialectal words.
+   - If unsure, keep the term in English.
+
+3. **Tables and numbers stay intact; prose around them translates.**
+""",
+    
+    "bn": """
+### BENGALI RESPONSE RULES (বাংলার জন্য নিয়ম)
+
+**CRITICAL: Avoid inventing Bengali words.**
+
+1. **Keep regulatory content in English:**
+   - Regulation numbers, section numbers, licensee names → ENGLISH
+
+2. **Translate only explanations to Bengali.**
+   - Use standard Bengali script (Bangla).
+   - If unsure of a word, keep it in English rather than guess.
+
+3. **Tables and numbers stay intact; prose translates.**
+""",
+    
+    "ta": """
+### TAMIL RESPONSE RULES (தமிழுக்கான விதிகள்)
+
+**CRITICAL: Avoid inventing Tamil words.**
+
+1. **Keep regulatory content in English:**
+   - Regulation numbers, section numbers, licensee names → ENGLISH
+
+2. **Translate only explanations to Tamil.**
+   - Use standard Tamil script.
+   - If unsure, keep the term in English.
+
+3. **Tables and numbers stay intact; prose translates.**
+""",
+    
+    "te": """
+### TELUGU RESPONSE RULES (తెలుగు కోసం నియమాలు)
+
+**CRITICAL: Avoid inventing Telugu words.**
+
+1. **Keep regulatory content in English:**
+   - Regulation numbers, section numbers, licensee names → ENGLISH
+
+2. **Translate only explanations to Telugu.**
+   - Use standard Telugu script.
+   - If unsure, keep the term in English.
+
+3. **Tables and numbers stay intact; prose translates.**
+""",
+    
+    "en": "",  # No override for English
+}
 
 # ── Streamlit UI ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Vidya ⚡", page_icon="⚡", layout="wide")
@@ -540,10 +705,11 @@ if prompt := st.chat_input("e.g. What is the domestic tariff slab for UGVCL cons
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Expand the query (handles Gujarati/Hinglish), then retrieve, then build the prompt.
+    # Detect language, expand query, retrieve, build prompt with language override.
+    user_language = detect_language(prompt, client)
     search_query = expand_query(prompt, client)
     relevant = retrieve(search_query, chunks)
-    system_prompt = build_system(relevant)
+    system_prompt = build_system(relevant, user_language)
 
     with st.chat_message("assistant"):
         try:

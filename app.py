@@ -133,6 +133,36 @@ def retrieve(query: str, chunks: list, top_k: int = TOP_K) -> list:
     return [c for c, s in scored[:top_k] if s > 0]
 
 
+# ── Query expansion (translate Gujarati/Hinglish → English keywords) ──────────
+def expand_query(raw_query: str, client) -> str:
+    """Translate + expand a (possibly Gujarati/Hinglish) query into English regulatory
+    keywords for retrieval. Returns original + expansion combined. Falls back to the raw
+    query on any error so retrieval never breaks."""
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=120,
+            system=(
+                "You convert a user's electricity-regulation question into a short ENGLISH "
+                "keyword string for searching a Gujarat electricity knowledge base (GERC Supply "
+                "Code 2015, Electricity Act 2003, GERC Standards of Performance 2023, and FY "
+                "2026-27 tariff schedules). The input may be in Gujarati, Hindi, romanized/"
+                "transliterated text, or English. Output ONLY domain keywords, no sentences, no "
+                "explanation. Expand colloquial terms to regulatory ones, e.g.: 'light jay chhe / "
+                "power cut / bandh' -> 'power supply interruption restoration fault fuse outage'; "
+                "'ketla kalak' -> 'standard restoration time hours'; 'bill' -> 'billing tariff'; "
+                "'navu connection' -> 'new connection release of supply'; 'meter fast' -> "
+                "'defective meter testing replacement'. PRESERVE any section/clause/regulation "
+                "numbers exactly (e.g. 'Section 135', 'Clause 7.41', 'Regulation 4.14')."
+            ),
+            messages=[{"role": "user", "content": raw_query}],
+        )
+        expanded = "".join(b.text for b in msg.content if b.type == "text").strip()
+        return f"{raw_query} {expanded}" if expanded else raw_query
+    except Exception:
+        return raw_query
+
+
 # ── Build system prompt ───────────────────────────────────────────────────────
 SYSTEM_BASE = """## 1. IDENTITY & ROLE
 
@@ -259,6 +289,9 @@ Examples make regulations concrete and you should use them. The discipline:
   **English** — it's fine to give a Gujarati explanation with English clause references.
 - **Keep these unchanged across languages:** clause/section numbers, licensee names, ₹/paise figures,
   units, and the citation. Translate the explanation, not the legal reference.
+- When answering in Gujarati, **keep tables, regulation numbers, time limits, and rupee figures in
+  the answer** — translate the explanation, not the data. A Gujarati answer about restoration times
+  should still contain the Regulation 4.14 table with the hour figures and the English citation.
 
 ---
 
@@ -269,15 +302,15 @@ Examples make regulations concrete and you should use them. The discipline:
   (b) your consumer category — tell me both and I'll give the exact rate."*
 - If the query is ambiguous between licensees or categories, either ask, or answer for the likely
   options clearly labelled.
-- If the KB is silent, say so and point to where the user can get it (their bill, the licensee, the
-  GERC site) — but only after giving whatever related grounded information you do have.
-- When the user names a specific section/clause (e.g. "Section 135", "Clause 7.41") and your
-excerpts only list it under REFERENCED PROVISIONS or mention it in passing — without its
-operative text — do not state that it is absent from the knowledge base. It likely exists but
-wasn't surfaced by this retrieval. Say: "The full text of [provision] wasn't surfaced for this
-query — try asking again focusing on it (e.g. 'theft of electricity penalty, second conviction,
-load above 10 kW') and I'll pull it." Do not reconstruct the provision's contents from
-memory, and do not send the user to external websites for content that is in these documents.
+- If the KB is silent, say so and point to where the user can get it (their bill, the licensee, or the
+  official GERC site) — but only after giving whatever related grounded information you do have. Never
+  invent a URL; only ever name the user's bill, their licensee, or the GERC site.
+- When the user names a specific section/clause (e.g. "Section 135", "Clause 7.41") and your excerpts
+  only list it under *REFERENCED PROVISIONS* or mention it in passing — without its operative text —
+  **do not state that it is absent from the knowledge base.** It likely exists but wasn't surfaced by
+  this retrieval. Say: *"The full text of [provision] wasn't surfaced for this query — try asking
+  again focusing on it (e.g. 'theft of electricity penalty, second conviction, load above 10 kW') and
+  I'll pull it."* Do not reconstruct the provision's contents from memory.
 
 ---
 
@@ -296,7 +329,29 @@ memory, and do not send the user to external websites for content that is in the
 
 ---
 
-## 10. SAFETY & REFUSALS
+## 10. SERVICE-QUALITY / STANDARDS OF PERFORMANCE QUESTIONS
+
+When the user asks about supply quality, outages, restoration time, low voltage, meter complaints, or
+service delays (the SoP domain), structure the answer around the concrete **standard**, not the
+complaint process:
+
+1. **Lead with the hard standard** from the excerpts — the maximum number of interruptions per day,
+   or the standard restoration time for the relevant fault. State the number first.
+2. **Give the fault-wise restoration table** whenever the excerpts contain it (LT fuse, HT fuse, line
+   fault, transformer, cable — urban vs rural). A table is the right format here.
+3. **Distinguish the three regimes and don't confuse them:** unplanned fault restoration (Regulation
+   4.14), scheduled/planned outage limits (Regulation 4.16), and reliability indices (Chapter 5 —
+   SAIFI/SAIDI, which are licensee-level statistics, NOT a per-consumer entitlement). If the user asks
+   "how long can my power be off," that is 4.14/4.16, never the Chapter 5 indices.
+4. **State the compensation entitlement** when the excerpts include it (e.g. Regulation 6.2 —
+   Rs. 50/hour, then Rs. 100/hour, with daily caps), because that is what makes the standard
+   actionable for the consumer. Cite it.
+5. **Cite each standard** by its regulation number, and keep all numbers and the table even when
+   answering in Gujarati.
+
+---
+
+## 11. SAFETY & REFUSALS
 
 You are helpful by default on rights, procedures, calculations, appeals and consumer protection —
 that is your core job, and you should not hide behind "consult a professional" when the documents
@@ -309,11 +364,15 @@ But:
 - **Don't issue personal legal/financial verdicts** ("should I pay or fight in court?"). Lay out the
   options, costs, deadlines and trade-offs from the documents and let the user decide. Note you're
   not a lawyer for matters that have become criminal litigation.
+- **Don't add ad-hoc practical advice that isn't in the documents** — e.g. "take photos, gather
+  witnesses, ask the deputy engineer to come measure voltage." If a step isn't in the excerpts, don't
+  present it as procedure. The documented path (register the complaint → the standard time applies →
+  compensation if the standard is missed → escalate to GERC) is sufficient and grounded.
 - Stay within Gujarat / GERC scope. For other states' rules, say they're outside your documents.
 
 ---
 
-## 11. TONE
+## 12. TONE
 
 Confident, practical, and precise — an engineer who respects the reader's time. Decisive *within what
 the source supports*; honest at the edge of it. No wishy-washy hedging, and equally no false
@@ -321,42 +380,12 @@ certainty. No cop-out disclaimers when you have the answer; a clear, specific li
 
 ---
 
-## 12. CLOSING EACH SUBSTANTIVE ANSWER
+## 13. CLOSING EACH SUBSTANTIVE ANSWER
 
 For procedural or complex answers, end with **concrete, optional next steps** the user can ask for —
 e.g. "I can calculate your exact figure if you give me your licensee, category and consumption," or
 "I can lay out the objection/appeal timeline." Keep it to the genuinely useful options. For simple
 lookups, no closing is needed — just answer.
-
-##B1. Add a new block: "Service-quality / Standards of Performance questions"
-When the user asks about supply quality, outages, restoration time, low voltage, meter
-complaints, or service delays (the SoP domain), structure the answer around the concrete
-standard, not the complaint process:
-
-Lead with the hard standard from the excerpts — the maximum number of interruptions per day,
-or the standard restoration time for the relevant fault. State the number first.
-Give the fault-wise restoration table whenever the excerpts contain it (LT fuse, HT fuse,
-line fault, transformer, cable — urban vs rural). A table is the right format here.
-Distinguish the three regimes and don't confuse them: unplanned fault restoration
-(Regulation 4.14), scheduled/planned outage limits (Regulation 4.16), and reliability indices
-(Chapter 5 — SAIFI/SAIDI, which are licensee-level statistics, NOT a per-consumer entitlement).
-If the user asks "how long can my power be off," that is 4.14/4.16, never the Chapter 5 indices.
-State the compensation entitlement when the excerpts include it (e.g. Regulation 6.2 —
-Rs. 50/hour, then Rs. 100/hour, daily caps), because that is what makes the standard actionable
-for the consumer. Cite it.
-Cite each standard by its regulation number, and keep all numbers and the table even when
-answering in Gujarati..
-
-##B2. Reinforce the no-invented-procedure rule (under Section 10 / grounding)
-Do not add ad-hoc practical advice that isn't in the documents — e.g. "take photos, gather
-witnesses, ask the deputy engineer to come measure voltage." If a step isn't in the excerpts, don't
-present it as procedure. The documented path (register the complaint → the standard time applies →
-compensation if the standard is missed → escalate to GERC) is sufficient and grounded.
-
-##B3. Sharpen the bilingual table rule (under Section 7)
-When answering in Gujarati, keep tables, regulation numbers, time limits, and rupee figures in
-the answer — translate the explanation, not the data. A Gujarati answer about restoration times
-should still contain the 4.14 table with the hour figures and the English regulation citation.
 
 ---
 
@@ -365,7 +394,7 @@ should still contain the 4.14 table with the hour figures and the English regula
 2. Did I cite each regulatory claim with document + clause/section?
 3. For any rate: did I name the licensee, category, FY, and pre/post-paid?
 4. Are my example numbers labelled "illustrative / assumption" where the user didn't supply them?
-5. Did I avoid inventing cases, statistics, or success rates?
+5. Did I avoid inventing cases, statistics, success rates, or URLs?
 6. Did I answer in the user's language?
 7. Is the length proportional to the question?
 """
@@ -445,46 +474,21 @@ if prompt := st.chat_input("e.g. What is the domestic tariff slab for UGVCL cons
         st.warning("⚠️ Please enter your Claude API Key in the sidebar to continue.")
         st.stop()
 
+    # Create the Claude client ONCE — used for both query expansion and the main answer.
+    client = anthropic.Anthropic(api_key=api_key)
+
     # Show user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Retrieve & answer
-    search_query = expand_query(prompt, client)   # client already created below — see note
+    # Expand the query (handles Gujarati/Hinglish), then retrieve, then build the prompt.
+    search_query = expand_query(prompt, client)
     relevant = retrieve(search_query, chunks)
     system_prompt = build_system(relevant)
 
     with st.chat_message("assistant"):
         try:
-            client = anthropic.Anthropic(api_key=api_key)
-            def expand_query(raw_query: str, client) -> str:
-    """Translate + expand a (possibly Gujarati/Hinglish) query into English regulatory
-    keywords for retrieval. Returns original + expansion combined. Falls back to the raw
-    query on any error so retrieval never breaks."""
-    try:
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=120,
-            system=(
-                "You convert a user's electricity-regulation question into a short ENGLISH "
-                "keyword string for searching a Gujarat electricity knowledge base (GERC Supply "
-                "Code 2015, Electricity Act 2003, GERC Standards of Performance 2023, and FY "
-                "2026-27 tariff schedules). The input may be in Gujarati, Hindi, romanized/"
-                "transliterated text, or English. Output ONLY domain keywords, no sentences, no "
-                "explanation. Expand colloquial terms to regulatory ones, e.g.: 'light jay chhe / "
-                "power cut / bandh' -> 'power supply interruption restoration fault fuse outage'; "
-                "'ketla kalak' -> 'standard restoration time hours'; 'bill' -> 'billing tariff'; "
-                "'navu connection' -> 'new connection release of supply'; 'meter fast' -> "
-                "'defective meter testing replacement'. PRESERVE any section/clause/regulation "
-                "numbers exactly (e.g. 'Section 135', 'Clause 7.41', 'Regulation 4.14')."
-            ),
-            messages=[{"role": "user", "content": raw_query}],
-        )
-        expanded = "".join(b.text for b in msg.content if b.type == "text").strip()
-        return f"{raw_query} {expanded}" if expanded else raw_query
-    except Exception:
-        return raw_query
             response_placeholder = st.empty()
             response_text = ""
 

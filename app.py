@@ -519,53 +519,70 @@ _LANGUAGE_INSTRUCTIONS = {
 **CRITICAL: Avoid inventing Gujarati words. Follow these rules strictly.**
 
 1. **Translate only the explanation, not the regulatory content.**
-   - Regulation numbers, section numbers, licensee names, clause titles → KEEP IN ENGLISH
-   - Example: "Section 135" નો જવાબ આપતી વખતે "Section 135" જ લખો, તેને ગુજરાતી કર્યો નહી.
+   - Regulation numbers, section numbers, licensee names → KEEP IN ENGLISH
 
-2. **For technical terms with no standard Gujarati equivalent, keep them in English.**
-   - "فОLT", "transformer", "disconnection", "UUE", "compensation", "tariff" → use English
-   - Don't invent Gujarati words like "ફોલ્ટ-અનુવાદ" or "વિદ્યુત-પોથો". These are hallucinations.
-   - If you're unsure of a Gujarati word, DON'T use it. Keep it English.
+2. **NEVER invent new word forms by adding Gujarati suffixes.**
+   - ❌ "ફરિયાદાણી" (invented) → ✓ "ફરિયાદ" (correct)
+   - ❌ "વિદ્યુત-ફોર્ટ" (invented) → ✓ "line fault" (English, safe)
+   - ❌ "સુધારણાનો" (invented) → ✓ "સુધાર" (correction)
+   - If you're adding a suffix or combining words, it's probably wrong. Use English instead.
 
-3. **Translate only conversational/explanatory Gujarati:**
-   - "તમારો બીજ કયો છે?" (your bill category) → translate to Gujarati ✓
-   - "દરેક દિવસે 2 વધુમાં વધુ વાર બંધ હોય શકે છે" (max 2 interruptions per day) → translate ✓
-   - "Regulation 4.14" → DON'T translate ✓
+3. **Safe Gujarati words for regulatory contexts:**
+   - ફરિયાદ / ફરિયાદ કરો (complaint / file complaint)
+   - સુધાર / સુધારો (correction / rectify)
+   - હક્ક (right / entitlement)
+   - દંડ (penalty)
+   - મુલામત (compensation)
+   - દિવસ / કલાક (day / hour)
+   - નિયમ (rule)
+   - આવશ્યક (required / necessary)
 
-4. **Use only standard, widely-understood Gujarati words.**
-   - If a word is dialectal, archaic, or non-standard, avoid it. Use simpler words.
-   - Example: use "બીજ" (bill) not "બીજક"; use "લાઇટ" (electricity/light) not invented variants.
+4. **For technical terms, keep in English if unsure:**
+   - "fault", "transformer", "disconnection", "tariff", "UUE", "compensation"
+   - Example: "line fault ના કારણે લાઇટ ૪ કલાક બંધ" (use "line fault" in English)
 
-5. **Structure stays intact:**
-   - Tables, lists, numbers, regulation citations → unchanged
-   - Surrounding prose → Gujarati
+5. **Tables, regulation numbers, times → NEVER translate**
+   - "Regulation 4.14", "2 hours", "₹50/hour" → EXACT SAME IN GUJARATI ANSWER
+
+**Rule of thumb:** If you invented the word (especially by adding suffixes), don't use it. English is better.
 """,
     
     "hi": """
 ### HINDI RESPONSE RULES (हिंदी के लिए नियम)
 
-**CRITICAL: Avoid inventing Hindi words. Follow these rules strictly.**
+**CRITICAL: Avoid inventing Hindi words.**
 
-1. **Translate only the explanation, not the regulatory content.**
-   - Regulation numbers, section numbers, licensee names, clause titles → KEEP IN ENGLISH
-   - Example: "Section 135" को हिंदी में अनुवाद न करें।
+1. **Translate only explanation, not regulatory content.**
+   - Section numbers, regulation numbers, licensee names → KEEP IN ENGLISH
 
-2. **For technical terms with no standard Hindi equivalent, keep them in English.**
-   - "fault", "transformer", "disconnection", "UUE", "compensation", "tariff" → use English
-   - Don't invent Hindi words. If unsure, keep it English.
+2. **NEVER invent new Hindi words by adding Hindi suffixes.**
+   - ❌ "शिकायतानी" (invented) → ✓ "शिकायत" (complaint)
+   - ❌ "विद्युत-फॉल्ट" (invented) → ✓ "line fault" (English, safe)
+   - ❌ "सुधारणीयता" (invented) → ✓ "सुधार" (correction)
+   - If adding -ना, -ती, -पन, or combining words feels forced, use English.
 
-3. **Translate only conversational/explanatory content:**
-   - "आपकी बिल श्रेणी क्या है?" (your bill category) → translate to Hindi ✓
-   - "प्रतिदिन अधिकतम 2 बार बंद हो सकता है" (max 2 interruptions per day) → translate ✓
-   - "Regulation 4.14" → DON'T translate ✓
+3. **Safe Hindi words for regulatory contexts:**
+   - शिकायत / शिकायत करो (complaint / file complaint)
+   - सुधार (correction)
+   - अधिकार (right / entitlement)
+   - दंड (penalty)
+   - मुआवजा (compensation)
+   - दिन / घंटा (day / hour)
+   - नियम (rule)
+   - आवश्यक (required)
+   - समय (time)
 
-4. **Use Devanagari script and standard Hindi vocabulary.**
-   - Avoid Hinglish or romanized text in your response.
-   - Use widely understood words; avoid archaic or dialectal terms.
+4. **For technical terms, keep in English if unsure:**
+   - "fault", "transformer", "disconnection", "tariff", "UUE"
+   - Example: "line fault की वजह से बिजली 4 घंटे बंद रह सकती है"
 
-5. **Structure stays intact:**
-   - Tables, numbers, regulation citations → unchanged
-   - Surrounding prose → Hindi (Devanagari)
+5. **Use Devanagari script only. NO romanized Hindi (Hinglish).**
+   - Write in proper Devanagari, not "bijli" or "fault ko"
+
+6. **Tables, regulation numbers, times → NEVER translate**
+   - "Regulation 4.14", "2 hours", "₹50" → SAME IN HINDI ANSWER
+
+**Rule of thumb:** If the word doesn't feel natural or you're forcing suffixes, use English instead.
 """,
     
     "mr": """
@@ -576,11 +593,28 @@ _LANGUAGE_INSTRUCTIONS = {
 1. **Keep regulatory content in English:**
    - Regulation numbers, section numbers, licensee names → ENGLISH
 
-2. **Translate only explanations and procedures to Marathi.**
-   - Use standard Marathi; avoid archaic or dialectal words.
-   - If unsure, keep the term in English.
+2. **NEVER invent Marathi words by adding suffixes.**
+   - ❌ "तक्रारीची" (invented) → ✓ "तक्रार" (complaint)
+   - ❌ "विद्युत-फॉल्ट" (invented) → ✓ "line fault" (English)
+   - ❌ "दुरुस्तीपणा" (invented) → ✓ "दुरुस्ती" (correction)
 
-3. **Tables and numbers stay intact; prose around them translates.**
+3. **Safe Marathi words:**
+   - तक्रार / तक्रार करा (complaint / file)
+   - दुरुस्ती (correction)
+   - अधिकार (right)
+   - दंड (penalty)
+   - नुकसान भरपाई (compensation)
+   - दिवस / तास (day / hour)
+   - नियम (rule)
+
+4. **Technical terms in English:**
+   - "fault", "transformer", "disconnection", "tariff", "UUE"
+   - Example: "line fault मुळे वीज 4 तास बंद राहू शकते"
+
+5. **Tables and regulation numbers → UNCHANGED**
+   - "Regulation 4.14", "2 hours" → SAME
+
+**Golden rule:** If unsure, English is safer than inventing Marathi words.
 """,
     
     "bn": """
@@ -589,13 +623,29 @@ _LANGUAGE_INSTRUCTIONS = {
 **CRITICAL: Avoid inventing Bengali words.**
 
 1. **Keep regulatory content in English:**
-   - Regulation numbers, section numbers, licensee names → ENGLISH
+   - Regulation numbers, licensee names → ENGLISH
 
-2. **Translate only explanations to Bengali.**
-   - Use standard Bengali script (Bangla).
-   - If unsure of a word, keep it in English rather than guess.
+2. **NEVER invent Bengali words by adding suffixes.**
+   - ❌ "অভিযোগতা" (invented) → ✓ "অভিযোগ" (complaint)
+   - ❌ "বিদ্যুৎ-ফল্ট" (invented) → ✓ "line fault" (English)
+   - ❌ "মেরামতপনা" (invented) → ✓ "মেরামত" (repair)
 
-3. **Tables and numbers stay intact; prose translates.**
+3. **Safe Bengali words:**
+   - অভিযোগ / অভিযোগ করুন (complaint / file)
+   - মেরামত (repair / correction)
+   - অধিকার (right)
+   - জরিমানা (penalty)
+   - ক্ষতিপূরণ (compensation)
+   - দিন / ঘণ্টা (day / hour)
+   - নিয়ম (rule)
+
+4. **Technical terms in English:**
+   - "fault", "transformer", "disconnection", "tariff"
+   - Example: "line fault এর কারণে বিদ্যুৎ 4 ঘণ্টা বন্ধ থাকতে পারে"
+
+5. **Use Bengali script correctly. Tables → UNCHANGED**
+
+**Rule:** If it's an invented word, use English.
 """,
     
     "ta": """
@@ -604,13 +654,29 @@ _LANGUAGE_INSTRUCTIONS = {
 **CRITICAL: Avoid inventing Tamil words.**
 
 1. **Keep regulatory content in English:**
-   - Regulation numbers, section numbers, licensee names → ENGLISH
+   - Regulation numbers, licensee names → ENGLISH
 
-2. **Translate only explanations to Tamil.**
-   - Use standard Tamil script.
-   - If unsure, keep the term in English.
+2. **NEVER invent Tamil words by adding Tamil suffixes.**
+   - ❌ "புகாரளித்தல்" (invented) → ✓ "புகார்" (complaint)
+   - ❌ "மின்சாரம்-ஃபாल்ட்" (invented) → ✓ "line fault" (English)
+   - ❌ "சரிசெய்தலின்" (invented) → ✓ "சரிசெய்தல்" (correction)
 
-3. **Tables and numbers stay intact; prose translates.**
+3. **Safe Tamil words:**
+   - புகார் / புகார் கொடுங்கள் (complaint / file)
+   - சரிசெய்தல் (correction)
+   - உரிமை (right)
+   - அபராதம் (penalty)
+   - இழப்பீடு (compensation)
+   - நாள் / மணி (day / hour)
+   - விதி (rule)
+
+4. **Technical terms in English:**
+   - "fault", "transformer", "disconnection", "tariff"
+   - Example: "line fault காரணமாக மின்சாரம் 4 மணி நேரம் குறைந்திருக்கலாம்"
+
+5. **Use Tamil script. Tables → UNCHANGED**
+
+**Rule:** If you're inventing a word form, use English instead.
 """,
     
     "te": """
@@ -619,13 +685,90 @@ _LANGUAGE_INSTRUCTIONS = {
 **CRITICAL: Avoid inventing Telugu words.**
 
 1. **Keep regulatory content in English:**
-   - Regulation numbers, section numbers, licensee names → ENGLISH
+   - Regulation numbers, licensee names → ENGLISH
 
-2. **Translate only explanations to Telugu.**
-   - Use standard Telugu script.
-   - If unsure, keep the term in English.
+2. **NEVER invent Telugu words by adding suffixes.**
+   - ❌ "ఫిర్యాదీకరణ" (invented) → ✓ "ఫిర్యాదు" (complaint)
+   - ❌ "విద్యుత్-ఫాల్ట్" (invented) → ✓ "line fault" (English)
+   - ❌ "మరమ్మతీకరణ" (invented) → ✓ "మరమ్మతు" (repair)
 
-3. **Tables and numbers stay intact; prose translates.**
+3. **Safe Telugu words:**
+   - ఫిర్యాదు / ఫిర్యాదు చేయండి (complaint / file)
+   - మరమ్మతు (repair / correction)
+   - హక్కు (right)
+   - జరిమానా (penalty)
+   - నష్టపూరణ (compensation)
+   - రోజు / గంట (day / hour)
+   - నియమం (rule)
+
+4. **Technical terms in English:**
+   - "fault", "transformer", "disconnection", "tariff"
+   - Example: "line fault కారణంగా విద్యుత్ 4 గంటల పాటు నిలిపివేయబడవచ్చు"
+
+5. **Use Telugu script. Tables → UNCHANGED**
+
+**Rule:** If inventing word forms, use English.
+""",
+
+    "kn": """
+### KANNADA RESPONSE RULES (ಕನ್ನಡಕ್ಕೆ ನಿಯಮಗಳು)
+
+**CRITICAL: Avoid inventing Kannada words.**
+
+1. **Keep regulatory content in English:**
+   - Regulation numbers, licensee names → ENGLISH
+
+2. **NEVER invent Kannada words by adding suffixes.**
+   - ❌ "ದೂರುಶೋಕತೆ" (invented) → ✓ "ದೂರು" (complaint)
+   - ❌ "ವಿದ್ಯುತ್-ಫಾಲ್ಟ್" (invented) → ✓ "line fault" (English)
+   - ❌ "ದುರುಸ್ತುತನೆ" (invented) → ✓ "ದುರುಸ್ತು" (repair)
+
+3. **Safe Kannada words:**
+   - ದೂರು / ದೂರು ಸಲ್ಲಿಸಿ (complaint / file)
+   - ದುರುಸ್ತು (repair / correction)
+   - ಹಕ್ಕು (right)
+   - ದಂಡ (penalty)
+   - ಪರಿಹಾರ (compensation)
+   - ದಿನ / ಗಂಟೆ (day / hour)
+   - ನಿಯಮ (rule)
+
+4. **Technical terms in English:**
+   - "fault", "transformer", "disconnection", "tariff"
+   - Example: "line fault ಕಾರಣದಿಂದ ವಿದ್ಯುತ್ 4 ಗಂಟೆ ಸ್ಥಗಿತವಾಗಬಹುದು"
+
+5. **Use Kannada script. Tables → UNCHANGED**
+
+**Rule:** If inventing word forms, use English.
+""",
+    "pa": """
+### PUNJABI RESPONSE RULES (ਪੰਜਾਬੀ ਲਈ ਨਿਯਮ)
+
+**CRITICAL: Avoid inventing Punjabi words.**
+
+1. **Keep regulatory content in English:**
+   - Regulation numbers, licensee names → ENGLISH
+
+2. **NEVER invent Punjabi words by adding suffixes.**
+   - ❌ "ਸ਼ਿਕਾਇਤੀਕਰਣ" (invented) → ✓ "ਸ਼ਿਕਾਇਤ" (complaint)
+   - ❌ "ਬਿਜਲੀ-ਫਾਲਟ" (invented) → ✓ "line fault" (English)
+   - ❌ "ਮੁਰੰਮਤਾਗੀ" (invented) → ✓ "ਮੁਰੰਮਤ" (repair)
+
+3. **Safe Punjabi words:**
+   - ਸ਼ਿਕਾਇਤ / ਸ਼ਿਕਾਇਤ ਕਰੋ (complaint / file)
+   - ਮੁਰੰਮਤ (repair / correction)
+   - ਹੱਕ (right)
+   - ਜ਼ੁਰਮਾਨਾ (penalty)
+   - ਮੁਆਵਜ਼ਾ (compensation)
+   - ਦਿਨ / ਘੰਟਾ (day / hour)
+   - ਨਿਯਮ (rule)
+
+4. **Technical terms in English:**
+   - "fault", "transformer", "disconnection", "tariff"
+   - Example: "line fault ਦੀ ਵਜ੍ਹਾ ਨਾਲ ਬਿਜਲੀ 4 ਘੰਟੇ ਬੰਦ ਰਹ ਸਕਦੀ ਹੈ"
+
+5. **Use Punjabi script. Tables → UNCHANGED**
+
+**Rule:** If inventing word forms, use English.
 """,
     
     "en": "",  # No override for English

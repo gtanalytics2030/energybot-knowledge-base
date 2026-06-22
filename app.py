@@ -863,9 +863,11 @@ if prompt := st.chat_input("e.g. What is the domestic tariff slab for UGVCL cons
                 model=MODEL,
                 max_tokens=3000,
                 system=system_prompt,
+                # Keep only the last 5 exchanges (Q+A pairs) to prevent context explosion
+                recent_messages = st.session_state.messages[-10:]  # Last 5 Q+A pairs
                 messages=[
                     {"role": m["role"], "content": m["content"]}
-                    for m in st.session_state.messages
+                    for m in recent_messages
                 ],
             ) as stream:
                 for text in stream.text_stream:

@@ -1,7 +1,7 @@
 # GERC DISTRIBUTION CODE - SECTION 1: INTRODUCTION
 ## Batch File 1 of 1 - All Introduction Clauses
 
----
+----
 
 ## CHUNK 1.1: OVERVIEW AND APPLICABILITY
 
